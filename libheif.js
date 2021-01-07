@@ -434,6 +434,7 @@ function createNamedFunction(name, body) {
         name = "function_" + new Date
     }
     name = makeLegalFunctionName(name);
+    console.log('---> createNamedFunction', body)
     return (new Function("body", "return function " + name + "() {\n" + '    "use strict";' + "    return body.apply(this, arguments);\n" + "};\n"))(body)
 }
 var root = this;
