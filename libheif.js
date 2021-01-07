@@ -436,7 +436,10 @@ function createNamedFunction(name, body) {
     name = makeLegalFunctionName(name);
     console.log('---> createNamedFunction', body)
   // return (new Function("body", "return function " + name + "() {\n" + '    "use strict";' + "    return body.apply(this, arguments);\n" + "};\n"))(body)
-  body.name = name;
+  Object.defineProperty(body, 'name', {
+    writable: true,
+    value: name
+  });
   return body;
 }
 if(typeof window !== "undefined") {
