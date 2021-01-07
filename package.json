@@ -1,0 +1,19 @@
+{
+  "name": "libheif",
+  "version": "1.0.0",
+  "description": "",
+  "main": "libheif.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kozo002/libheif-js.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kozo002/libheif-js/issues"
+  },
+  "homepage": "https://github.com/kozo002/libheif-js#readme"
+}
