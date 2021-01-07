@@ -46,11 +46,20 @@ function requireFunction(signature, rawFunction) {
     var body  = "return function " + name + "(" + args.join(", ") + ") {\n";
         body += "    return dynCall(rawFunction" + (args.length ? ", " : "") + args.join(", ") + ");\n";
         body += "};\n";
-    console.log('---> signature', signature);
-    console.log('---> rawFunction', rawFunction);
-    console.log('---> body', body);
-    console.log('---> dynCall', dynCall);
-    return (new Function("dynCall","rawFunction",body))(dynCall,rawFunction)
+    // console.log('---> signature', signature);
+    // console.log('---> rawFunction', rawFunction);
+    // console.log('---> body', body);
+    // console.log('---> dynCall', dynCall);
+    // return (new Function("dynCall","rawFunction",body))(dynCall,rawFunction)
+
+    var wrapperFunc = function(...args) {
+      return dynCall(rawFunction, ...args)
+    };
+    Object.defineProperty(wrapperFunc, 'name', {
+      writable: true,
+      value: name
+    })
+    return wrapperFunc;
   }
 
   var fp;
