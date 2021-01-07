@@ -429,7 +429,6 @@ for (key in Module) {
 //     delete this["Module"]
 // }
 
-var root = this;
 function createNamedFunction(name, body) {
     if (!name) {
         name = "function_" + new Date
@@ -437,7 +436,8 @@ function createNamedFunction(name, body) {
     name = makeLegalFunctionName(name);
     console.log('---> createNamedFunction', body)
   // return (new Function("body", "return function " + name + "() {\n" + '    "use strict";' + "    return body.apply(this, arguments);\n" + "};\n"))(body)
-  return root[name] = body;
+  body.name = name;
+  return body;
 }
 if(typeof window !== "undefined") {
     // window.libheif = libheif
