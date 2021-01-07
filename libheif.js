@@ -429,15 +429,16 @@ for (key in Module) {
 //     delete this["Module"]
 // }
 
+var root = this;
 function createNamedFunction(name, body) {
     if (!name) {
         name = "function_" + new Date
     }
     name = makeLegalFunctionName(name);
     console.log('---> createNamedFunction', body)
-    return (new Function("body", "return function " + name + "() {\n" + '    "use strict";' + "    return body.apply(this, arguments);\n" + "};\n"))(body)
+  // return (new Function("body", "return function " + name + "() {\n" + '    "use strict";' + "    return body.apply(this, arguments);\n" + "};\n"))(body)
+  return root[name] = body;
 }
-var root = this;
 if(typeof window !== "undefined") {
     // window.libheif = libheif
 }
