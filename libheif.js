@@ -110,76 +110,493 @@ function new_(constructor, argumentList) {
 
 
 function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc) {
-  var argCount=argTypes.length;
-  if (argCount<2) {
-    throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!")
-  }
-  var isClassMethodFunc = argTypes[1] !== null && classType !== null;
-  var needsDestructorStack = false;
-
-  for (var i = 1; i < argTypes.length; ++i) {
-    if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) {
-      needsDestructorStack=true;
-      break
-    }
-  }
-  var returns = argTypes[0].name !== "void";
-  var argsList = "";
-  var argsListWired = "";
-  for (var i = 0; i < argCount-2; ++i) {
-    argsList += (i !== 0 ? ", " : "") + "arg" + i;
-    argsListWired += (i !== 0 ? ", " : "") + "arg" + i + "Wired"
-  }
-
-  var invokerFnBody = "return function " + makeLegalFunctionName(humanName) + "(" + argsList + ") {\n" +
-                        "if (arguments.length !== " + (argCount - 2) + ") {\n" +
-                          "throwBindingError('function " + humanName + " called with ' + arguments.length + ' arguments, expected "+(argCount-2)+" args!');\n" +
-                        "}\n";
-
-  if (needsDestructorStack) {
-    invokerFnBody += "var destructors = [];\n"
-  }
-
-  var dtorStack = needsDestructorStack ? "destructors" : "null";
-  var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
-  var args2 = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
-  if (isClassMethodFunc) {
-    invokerFnBody += "var thisWired = classParam.toWireType(" + dtorStack + ", this);\n"
-  }
-  for (var i=0; i < argCount - 2; ++i) {
-    invokerFnBody += "var arg" + i + "Wired = argType" + i + ".toWireType(" + dtorStack + ", arg" + i + "); // " + argTypes[i+2].name + "\n";
-    args1.push("argType"+i);
-    args2.push(argTypes[i + 2])
-  }
-  if (isClassMethodFunc) {
-    argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired
-  }
-  invokerFnBody += (returns ? "var rv = " : "") + "invoker(fn" + (argsListWired.length > 0 ? ", " : "") + argsListWired + ");\n";
-  if (needsDestructorStack) {
-    invokerFnBody += "runDestructors(destructors);\n"
-  } else {
-    for (var i = isClassMethodFunc ? 1 : 2; i < argTypes.length; ++i) {
-      var paramName = i === 1 ? "thisWired" : "arg" + (i - 2) + "Wired";
-      if (argTypes[i].destructorFunction !== null) {
-        invokerFnBody += paramName + "_dtor("+paramName+"); // " + argTypes[i].name + "\n";
-        args1.push(paramName + "_dtor");
-        args2.push(argTypes[i].destructorFunction)
+  // var argCount=argTypes.length;
+  // if (argCount<2) {
+  //   throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!")
+  // }
+  // var isClassMethodFunc = argTypes[1] !== null && classType !== null;
+  // var needsDestructorStack = false;
+  // 
+  // for (var i = 1; i < argTypes.length; ++i) {
+  //   if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) {
+  //     needsDestructorStack=true;
+  //     break
+  //   }
+  // }
+  // var returns = argTypes[0].name !== "void";
+  // var argsList = "";
+  // var argsListWired = "";
+  // for (var i = 0; i < argCount-2; ++i) {
+  //   argsList += (i !== 0 ? ", " : "") + "arg" + i;
+  //   argsListWired += (i !== 0 ? ", " : "") + "arg" + i + "Wired"
+  // }
+  // 
+  // var invokerFnBody = "return function " + makeLegalFunctionName(humanName) + "(" + argsList + ") {\n" +
+  //                       "if (arguments.length !== " + (argCount - 2) + ") {\n" +
+  //                         "throwBindingError('function " + humanName + " called with ' + arguments.length + ' arguments, expected "+(argCount-2)+" args!');\n" +
+  //                       "}\n";
+  // 
+  // if (needsDestructorStack) {
+  //   invokerFnBody += "var destructors = [];\n"
+  // }
+  // 
+  // var dtorStack = needsDestructorStack ? "destructors" : "null";
+  // var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+  // var args2 = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+  // if (isClassMethodFunc) {
+  //   invokerFnBody += "var thisWired = classParam.toWireType(" + dtorStack + ", this);\n"
+  // }
+  // for (var i=0; i < argCount - 2; ++i) {
+  //   invokerFnBody += "var arg" + i + "Wired = argType" + i + ".toWireType(" + dtorStack + ", arg" + i + "); // " + argTypes[i+2].name + "\n";
+  //   args1.push("argType"+i);
+  //   args2.push(argTypes[i + 2])
+  // }
+  // if (isClassMethodFunc) {
+  //   argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired
+  // }
+  // invokerFnBody += (returns ? "var rv = " : "") + "invoker(fn" + (argsListWired.length > 0 ? ", " : "") + argsListWired + ");\n";
+  // if (needsDestructorStack) {
+  //   invokerFnBody += "runDestructors(destructors);\n"
+  // } else {
+  //   for (var i = isClassMethodFunc ? 1 : 2; i < argTypes.length; ++i) {
+  //     var paramName = i === 1 ? "thisWired" : "arg" + (i - 2) + "Wired";
+  //     if (argTypes[i].destructorFunction !== null) {
+  //       invokerFnBody += paramName + "_dtor("+paramName+"); // " + argTypes[i].name + "\n";
+  //       args1.push(paramName + "_dtor");
+  //       args2.push(argTypes[i].destructorFunction)
+  //     }
+  //   }
+  // }
+  // if (returns) {
+  //   invokerFnBody += "var ret = retType.fromWireType(rv);\n" +
+  //                    "return ret;\n"
+  // } else {}
+  // 
+  // invokerFnBody += "}\n";
+  // args1.push(invokerFnBody);
+  // 
+  // var annonymousFunc = new_(Function, args1)
+  // var invokerFunction = annonymousFunc.apply(null, args2);
+  // console.log('---> invokerFnBody', invokerFnBody);
+  // console.log('---> args2', args2);
+  // console.log('---> invokerFunction', invokerFunction);
+  const funcs = {
+    Box$read: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function Box$read(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function Box.read called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var arg0Wired = argType0.toWireType(null, arg0); // BitstreamRangeBase
+        var rv = invoker(fn, arg0Wired);
+        var ret = retType.fromWireType(rv);
+        return ret;
       }
-    }
-  }
-  if (returns) {
-    invokerFnBody += "var ret = retType.fromWireType(rv);\n" +
-                     "return ret;\n"
-  } else {}
+    }),
+    
+    HeifFile$get_item_IDs: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function HeifFile$get_item_IDs() {
+        if (arguments.length !== 0) {
+          throwBindingError('function HeifFile.get_item_IDs called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_context_alloc: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function heif_context_alloc() {
+        if (arguments.length !== 0) {
+          throwBindingError('function heif_context_alloc called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var rv = invoker(fn);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_context_free: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function heif_context_free(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function heif_context_free called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var arg0Wired = argType0.toWireType(null, arg0); // heif_context*
+        invoker(fn, arg0Wired);
+      }
+    }),
+    
+    heif_image_handle_release: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function heif_image_handle_release(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function heif_image_handle_release called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var arg0Wired = argType0.toWireType(null, arg0); // heif_image_handle const*
+        invoker(fn, arg0Wired);
+      }
+    }),
+    
+    BitstreamRange$error: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function BitstreamRange$error() {
+        if (arguments.length !== 0) {
+          throwBindingError('function BitstreamRange.error called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var destructors = [];
+        var thisWired = classParam.toWireType(destructors, this);
+        var rv = invoker(fn, thisWired);
+        runDestructors(destructors);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_context_get_number_of_top_level_images: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function heif_context_get_number_of_top_level_images(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function heif_context_get_number_of_top_level_images called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var arg0Wired = argType0.toWireType(null, arg0); // heif_context*
+        var rv = invoker(fn, arg0Wired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    Indent$get_indent: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function Indent$get_indent() {
+        if (arguments.length !== 0) {
+          throwBindingError('function Indent.get_indent called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    HeifFile$get_num_images: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function HeifFile$get_num_images() {
+        if (arguments.length !== 0) {
+          throwBindingError('function HeifFile.get_num_images called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_get_version_number: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function heif_get_version_number() {
+        if (arguments.length !== 0) {
+          throwBindingError('function heif_get_version_number called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var rv = invoker(fn);
+        var ret = retType.fromWireType(rv);
+        return ret;
+        }
+    }),
+    
+    BoxHeader$get_header_size: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function BoxHeader$get_header_size() {
+        if (arguments.length !== 0) {
+          throwBindingError('function BoxHeader.get_header_size called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    BoxHeader$get_short_type: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function BoxHeader$get_short_type() {
+        if (arguments.length !== 0) {
+          throwBindingError('function BoxHeader.get_short_type called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    Box$get_child_box: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function Box$get_child_box(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function Box.get_child_box called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var destructors = [];
+        var thisWired = classParam.toWireType(destructors, this);
+        var arg0Wired = argType0.toWireType(destructors, arg0); // unsigned int
+        var rv = invoker(fn, thisWired, arg0Wired);
+        runDestructors(destructors);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    HeifFile$get_primary_image_ID: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function HeifFile$get_primary_image_ID() {
+        if (arguments.length !== 0) {
+          throwBindingError('function HeifFile.get_primary_image_ID called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    StringVector$size: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function StringVector$size() {
+        if (arguments.length !== 0) {
+          throwBindingError('function StringVector.size called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    UInt32Vector$push_back: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function UInt32Vector$push_back(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function UInt32Vector.push_back called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned int
+        invoker(fn, thisWired, arg0Wired);
+      }
+    }),
+    
+    UInt32Vector$resize: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1) {
+      return function UInt32Vector$resize(arg0, arg1) {
+        if (arguments.length !== 2) {
+          throwBindingError('function UInt32Vector.resize called with ' + arguments.length + ' arguments, expected 2 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned int
+        var arg1Wired = argType1.toWireType(null, arg1); // unsigned int
+        invoker(fn, thisWired, arg0Wired, arg1Wired);
+      }
+    }),
+    
+    UInt32Vector$size: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function UInt32Vector$size() {
+        if (arguments.length !== 0) {
+          throwBindingError('function UInt32Vector.size called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    UInt32Vector$set: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1) {
+      return function UInt32Vector$set(arg0, arg1) {
+        if (arguments.length !== 2) {
+          throwBindingError('function UInt32Vector.set called with ' + arguments.length + ' arguments, expected 2 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned int
+        var arg1Wired = argType1.toWireType(null, arg1); // unsigned int
+        var rv = invoker(fn, thisWired, arg0Wired, arg1Wired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_get_version: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function heif_get_version() {
+        if (arguments.length !== 0) {
+          throwBindingError('function heif_get_version called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var rv = invoker(fn);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_context_read_from_memory: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1,arg1Wired_dtor) {
+      return function heif_context_read_from_memory(arg0, arg1) {
+        if (arguments.length !== 2) {
+          throwBindingError('function heif_context_read_from_memory called with ' + arguments.length + ' arguments, expected 2 args!');
+        }
+        var arg0Wired = argType0.toWireType(null, arg0); // heif_context*
+        var arg1Wired = argType1.toWireType(null, arg1); // std::string
+        var rv = invoker(fn, arg0Wired, arg1Wired);
+        arg1Wired_dtor(arg1Wired); // std::string
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    BoxHeader$get_type_string: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function BoxHeader$get_type_string() {
+        if (arguments.length !== 0) {
+          throwBindingError('function BoxHeader.get_type_string called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    BoxHeader$dump: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function BoxHeader$dump() {
+        if (arguments.length !== 0) {
+          throwBindingError('function BoxHeader.dump called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var rv = invoker(fn, thisWired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    Box$dump: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam) {
+      return function Box$dump() {
+        if (arguments.length !== 0) {
+          throwBindingError('function Box.dump called with ' + arguments.length + ' arguments, expected 0 args!');
+        }
+        var destructors = [];
+        var thisWired = classParam.toWireType(destructors, this);
+        var rv = invoker(fn, thisWired);
+        runDestructors(destructors);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    HeifFile$read_from_memory: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,arg0Wired_dtor) {
+      return function HeifFile$read_from_memory(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function HeifFile.read_from_memory called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // std::string
+        var rv = invoker(fn, thisWired, arg0Wired);
+        arg0Wired_dtor(arg0Wired); // std::string
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    StringVector$push_back: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,arg0Wired_dtor) {
+      return function StringVector$push_back(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function StringVector.push_back called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // std::string
+        invoker(fn, thisWired, arg0Wired);
+        arg0Wired_dtor(arg0Wired); // std::string
+      }
+    })
+    
+    StringVector$resize: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1,arg1Wired_dtor) {
+      return function StringVector$resize(arg0, arg1) {
+        if (arguments.length !== 2) {
+          throwBindingError('function StringVector.resize called with ' + arguments.length + ' arguments, expected 2 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned int
+        var arg1Wired = argType1.toWireType(null, arg1); // std::string
+        invoker(fn, thisWired, arg0Wired, arg1Wired);
+        arg1Wired_dtor(arg1Wired); // std::string
+      }
+    }),
+    
+    StringVector$set: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1,arg1Wired_dtor) {
+      return function StringVector$set(arg0, arg1) {
+        if (arguments.length !== 2) {
+          throwBindingError('function StringVector.set called with ' + arguments.length + ' arguments, expected 2 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned int
+        var arg1Wired = argType1.toWireType(null, arg1); // std::string
+        var rv = invoker(fn, thisWired, arg0Wired, arg1Wired);
+        arg1Wired_dtor(arg1Wired); // std::string
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_js_context_get_image_handle: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1) {
+      return function heif_js_context_get_image_handle(arg0, arg1) {
+        if (arguments.length !== 2) {
+          throwBindingError('function heif_js_context_get_image_handle called with ' + arguments.length + ' arguments, expected 2 args!');
+        }
+        var arg0Wired = argType0.toWireType(null, arg0); // heif_context*
+        var arg1Wired = argType1.toWireType(null, arg1); // int
+        var rv = invoker(fn, arg0Wired, arg1Wired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    heif_js_decode_image: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1,argType2) {
+      return function heif_js_decode_image(arg0, arg1, arg2) {
+        if (arguments.length !== 3) {
+          throwBindingError('function heif_js_decode_image called with ' + arguments.length + ' arguments, expected 3 args!');
+        }
+        var arg0Wired = argType0.toWireType(null, arg0); // heif_image_handle*
+        var arg1Wired = argType1.toWireType(null, arg1); // heif_colorspace
+        var arg2Wired = argType2.toWireType(null, arg2); // heif_chroma
+        var rv = invoker(fn, arg0Wired, arg1Wired, arg2Wired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    HeifFile$get_compressed_image_data: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1,arg1Wired_dtor) {
+      return function HeifFile$get_compressed_image_data(arg0, arg1) {
+        if (arguments.length !== 2) {
+          throwBindingError('function HeifFile.get_compressed_image_data called with ' + arguments.length + ' arguments, expected 2 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned short
+        var arg1Wired = argType1.toWireType(null, arg1); // std::string
+        var rv = invoker(fn, thisWired, arg0Wired, arg1Wired);
+        arg1Wired_dtor(arg1Wired); // std::string
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    StringVector$get: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function StringVector$get(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function StringVector.get called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned int
+        var rv = invoker(fn, thisWired, arg0Wired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    }),
+    
+    UInt32Vector$get: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0) {
+      return function UInt32Vector$get(arg0) {
+        if (arguments.length !== 1) {
+          throwBindingError('function UInt32Vector.get called with ' + arguments.length + ' arguments, expected 1 args!');
+        }
+        var thisWired = classParam.toWireType(null, this);
+        var arg0Wired = argType0.toWireType(null, arg0); // unsigned int
+        var rv = invoker(fn, thisWired, arg0Wired);
+        var ret = retType.fromWireType(rv);
+        return ret;
+      }
+    })
+  };
 
-  invokerFnBody += "}\n";
-  args1.push(invokerFnBody);
+  const invokerFunction = funcs[makeLegalFunctionName(humanName)];
 
-  var annonymousFunc = new_(Function, args1)
-  var invokerFunction = annonymousFunc.apply(null, args2);
-  console.log('---> invokerFnBody', invokerFnBody);
-  console.log('---> args2', args2);
-  console.log('---> invokerFunction', invokerFunction);
   return invokerFunction
 }
 
