@@ -52,8 +52,10 @@ function requireFunction(signature, rawFunction) {
     // console.log('---> dynCall', dynCall);
     // return (new Function("dynCall","rawFunction",body))(dynCall,rawFunction)
 
-    var wrapperFunc = function(...args) {
-      return dynCall(rawFunction, ...args)
+    var wrapperFunc = function() {
+      const args = Array.prototype.slice.call(arguments);
+      args.unshift(rawFunction)
+      return dynCall.apply(null, args);
     };
     Object.defineProperty(wrapperFunc, 'name', {
       writable: true,
