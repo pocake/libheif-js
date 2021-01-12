@@ -2,7 +2,7 @@
   "name": "libheif",
   "version": "1.0.0",
   "description": "",
-  "main": "libheif.js",
+  "main": "libheif.min.js",
   "scripts": {
     "minify": "uglifyjs ./libheif.js -o ./libheif.min.js -c drop_console"
   },
