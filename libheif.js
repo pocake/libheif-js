@@ -131,6 +131,23 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     argsListWired += (i !== 0 ? ", " : "") + "arg" + i + "Wired"
   }
 
+  const invokerFunc = (...argsList) => {
+    if (arguments.length !== argCount - 2 {
+      throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${argCount-2} args!`);
+    }
+    var destructors = [needsDestructorStack ? [] : null;
+    // var dtorStack = needsDestructorStack ? "destructors" : "null";
+    var thisWired = classParam.toWireType(destructors, this);
+
+    if (needsDestructorStack) {
+    }
+
+  }
+  Object.setProperty(invokerFunc, 'name', {
+    writable: true,
+    value: makeLegalFunctionName(humanName)
+  })
+
   var invokerFnBody = "return function " + makeLegalFunctionName(humanName) + "(" + argsList + ") {\n" +
                         "if (arguments.length !== " + (argCount - 2) + ") {\n" +
                           "throwBindingError('function " + humanName + " called with ' + arguments.length + ' arguments, expected "+(argCount-2)+" args!');\n" +
@@ -179,7 +196,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
   var invokerFunction = annonymousFunc.apply(null, args2);
   console.log('---> invokerFnBody', invokerFnBody);
   console.log('---> args2', args2);
-  console.log('---> invokerFunction', );
+  console.log('---> invokerFunction', invokerFunction);
   return invokerFunction
 }
 
