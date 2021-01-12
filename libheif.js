@@ -496,7 +496,7 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
         invoker(fn, thisWired, arg0Wired);
         arg0Wired_dtor(arg0Wired); // std::string
       }
-    })
+    }),
     
     StringVector$resize: (function anonymous(throwBindingError,invoker,fn,runDestructors,retType,classParam,argType0,argType1,arg1Wired_dtor) {
       return function StringVector$resize(arg0, arg1) {
