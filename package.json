@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kozo002/libheif-js.git"
+    "url": "git+https://github.com/pocake/libheif-js.git"
   },
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/kozo002/libheif-js/issues"
+    "url": "https://github.com/pocake/libheif-js/issues"
   },
-  "homepage": "https://github.com/kozo002/libheif-js#readme",
+  "homepage": "https://github.com/pocake/libheif-js#readme",
   "devDependencies": {
     "uglify-js": "^3.12.4"
   }
