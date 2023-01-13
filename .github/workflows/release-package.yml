@@ -21,7 +21,7 @@ jobs:
           scope: '@pocake'
 
   publish-gpr:
-    # needs: build
+    needs: build
     runs-on: [self-hosted, tornade, "${{ github.run_id }}", "runs-on=FARGATE_SPOT", "arch=X86_64"]
     steps:
       - name: Checkout
