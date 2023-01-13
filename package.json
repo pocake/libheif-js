@@ -1,8 +1,13 @@
 {
-  "name": "libheif",
-  "version": "1.0.0",
+  "name": "@pocake/libheif",
+  "version": "1.0.0-canary.0",
   "description": "",
   "main": "libheif.min.js",
+  "files": [
+    "index.d.ts",
+    "libheif.js",
+    "libheif.min.js"
+  ],
   "scripts": {
     "minify": "uglifyjs ./libheif.js -o ./libheif.min.js -c drop_console"
   },
